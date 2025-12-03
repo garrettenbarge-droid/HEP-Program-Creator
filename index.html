@@ -28,10 +28,10 @@
                 PT Rehab Program Manager
             </h1>
             <p id="auth-status" class="text-sm text-gray-500 mt-1">Authenticating...</p>
-            <div class="mt-4 p-3 bg-red-100 border border-red-300 text-red-800 rounded-lg shadow-sm">
-                <p class="font-semibold">⚠️ Important Prototype Disclaimer:</p>
-                <p class="text-sm">This application is a **prototype** for functional demonstration only. It is **not HIPAA compliant** and must not be used to store or transmit real patient health information (PHI).</p>
-            </div>
+            <!-- Less Intrusive Disclaimer -->
+            <p class="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                <span class="font-semibold text-red-600">WARNING:</span> This is a prototype and is not HIPAA compliant. Do not use with real PHI.
+            </p>
         </header>
 
         <!-- Main Content Area -->
@@ -137,13 +137,25 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // setLogLevel is added to the import list
         import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global Firebase variables (provided by the Canvas environment)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // --- PASTE YOUR CONFIG HERE ---
+        // !!! IMPORTANT: YOU MUST REPLACE THE EMPTY OBJECT BELOW {} 
+        // WITH THE FIREBASE CONFIGURATION OBJECT FROM YOUR FIREBASE CONSOLE!
+        const firebaseConfig = {
+            // apiKey: "YOUR_API_KEY",
+            // authDomain: "YOUR_AUTH_DOMAIN",
+            // projectId: "YOUR_PROJECT_ID",
+            // storageBucket: "YOUR_STORAGE_BUCKET",
+            // messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            // appId: "YOUR_APP_ID"
+        };
+        // --- PASTE YOUR CONFIG HERE ---
+
 
         let app;
         let db;
@@ -271,10 +283,11 @@
         // --- Core Application Logic ---
 
         async function initFirebase() {
-            if (!firebaseConfig) {
-                authStatus.textContent = 'Error: Firebase config missing.';
+            // Check if user provided the necessary public config
+            if (Object.keys(firebaseConfig).length === 0) {
+                authStatus.textContent = 'ERROR: MISSING FIREBASE CONFIG! Cannot save/load data.';
                 loadingIndicator.classList.add('hidden');
-                creatorView.classList.remove('hidden'); // Show creator view even if unauthenticated
+                creatorView.classList.remove('hidden');
                 return;
             }
 
@@ -298,8 +311,10 @@
                     } else {
                         // Sign in anonymously if no user is found
                         if (initialAuthToken) {
+                            // This part is mostly for the Canvas environment, not your live app
                             await signInWithCustomToken(auth, initialAuthToken);
                         } else {
+                            // On the live app, this will handle initial authentication
                             await signInAnonymously(auth);
                         }
                     }
@@ -311,7 +326,7 @@
                 });
 
                 if (!initialAuthToken) {
-                     // If no initial token, force sign in anonymously immediately
+                     // Force sign in anonymously immediately if no token is available
                     await signInAnonymously(auth);
                 }
 
@@ -329,7 +344,7 @@
         async function saveProgram() {
             errorMessageDiv.classList.add('hidden');
             if (!isAuthReady || !db) {
-                showCreatorError('Application not ready. Please wait for authentication.');
+                showCreatorError('Application not ready. Please wait for authentication or check your Firebase config.');
                 return;
             }
             if (currentProgramExercises.length === 0) {
@@ -355,6 +370,7 @@
                 createdAt: new Date().toISOString()
             };
 
+            // This path uses the publicly readable collection structure
             const programRef = doc(db, `artifacts/${appId}/public/data/pt_programs`, programId);
 
             try {
@@ -393,11 +409,12 @@
             displayExercises.innerHTML = '<p class="text-center text-gray-500">Loading program...</p>';
 
             if (!isAuthReady || !db) {
-                patientError.textContent = 'Application not ready. Please wait for authentication.';
+                patientError.textContent = 'Application not ready. Please wait for authentication or check your Firebase config.';
                 patientError.classList.remove('hidden');
                 return;
             }
 
+            // This path uses the publicly readable collection structure
             const programRef = doc(db, `artifacts/${appId}/public/data/pt_programs`, id);
 
             try {
