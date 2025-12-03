@@ -45,6 +45,10 @@
             <div id="creator-view" class="space-y-6 hidden">
                 <h2 class="text-2xl font-bold text-gray-800 border-b pb-2">Create New Program</h2>
 
+                <button id="switch-to-patient-btn" class="w-full text-center text-sm text-indigo-500 mt-2 mb-4 hover:text-indigo-700 transition duration-150">
+                    Click here to switch to the Patient Program Viewer
+                </button>
+
                 <div class="flex flex-col sm:flex-row gap-4">
                     <input type="text" id="patient-name" placeholder="Patient Name (e.g., 'Jane Doe')"
                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-lg shadow-sm">
@@ -166,6 +170,7 @@
         const patientError = document.getElementById('patient-error');
         const errorMessageDiv = document.getElementById('error-message');
         const resetViewBtn = document.getElementById('reset-view-btn');
+        const switchToPatientBtn = document.getElementById('switch-to-patient-btn'); // New element
 
         let currentProgramExercises = [];
 
@@ -493,6 +498,13 @@
 
         // Reset View button (to go back to creator view)
         resetViewBtn.addEventListener('click', showCreatorView);
+        
+        // New: Switch to Patient View button
+        switchToPatientBtn.addEventListener('click', () => {
+            showPatientView();
+            // Also update the URL hash
+            window.history.pushState(null, '', '#view=patient');
+        });
 
         // Handle URL hash changes (for direct sharing links)
         window.addEventListener('hashchange', handleRouting);
