@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PT Program Creator & Viewer</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc;
+        }
+        .scroll-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen p-4 sm:p-8 flex flex-col items-center">
+        <!-- Header -->
+        <header class="w-full max-w-4xl mb-8">
+            <h1 class="text-3xl font-extrabold text-indigo-700 tracking-tight">
+                PT Rehab Program Manager
+            </h1>
+            <p id="auth-status" class="text-sm text-gray-500 mt-1">Authenticating...</p>
+            <div class="mt-4 p-3 bg-red-100 border border-red-300 text-red-800 rounded-lg shadow-sm">
+                <p class="font-semibold">⚠️ Important Prototype Disclaimer:</p>
+                <p class="text-sm">This application is a **prototype** for functional demonstration only. It is **not HIPAA compliant** and must not be used to store or transmit real patient health information (PHI).</p>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="w-full max-w-4xl bg-white p-6 sm:p-8 rounded-xl shadow-2xl border border-gray-100">
+
+            <div id="loading-indicator" class="text-center p-12 hidden">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mx-auto"></div>
+                <p class="mt-4 text-indigo-600">Loading application...</p>
+            </div>
+
+            <div id="creator-view" class="space-y-6 hidden">
+                <h2 class="text-2xl font-bold text-gray-800 border-b pb-2">Create New Program</h2>
+
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <input type="text" id="patient-name" placeholder="Patient Name (e.g., 'Jane Doe')"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-lg shadow-sm">
+                    <input type="text" id="program-title" placeholder="Program Title (e.g., 'Post-Op Knee Week 2')"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-lg shadow-sm">
+                </div>
+
+                <!-- Exercise List -->
+                <div class="mt-6">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3">Exercises in Program</h3>
+                    <div id="exercises-list" class="scroll-container bg-gray-50 p-4 rounded-lg border border-dashed border-gray-200 space-y-3">
+                        <p class="text-gray-500 italic text-center" id="empty-list-message">No exercises added yet.</p>
+                    </div>
+                </div>
+
+                <!-- Add Exercise Form -->
+                <div class="border-t pt-6 mt-6 space-y-4">
+                    <h3 class="text-xl font-semibold text-indigo-600">Add New Exercise</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input type="text" id="ex-name" placeholder="Exercise Name (e.g., Quad Sets)"
+                               class="col-span-3 md:col-span-1 p-3 border border-gray-300 rounded-lg">
+                        <input type="text" id="ex-sets" placeholder="Sets (e.g., 3)"
+                               class="p-3 border border-gray-300 rounded-lg">
+                        <input type="text" id="ex-reps" placeholder="Reps/Duration (e.g., 10 holds / 30 seconds)"
+                               class="p-3 border border-gray-300 rounded-lg">
+                    </div>
+                    <textarea id="ex-instructions" placeholder="Instructions & Cues (e.g., Squeeze quad muscle. Hold for 5 seconds. Do not hold breath.)"
+                              rows="3" class="w-full p-3 border border-gray-300 rounded-lg resize-none"></textarea>
+                    <button id="add-exercise-btn" class="w-full bg-green-500 text-white p-3 rounded-lg font-semibold hover:bg-green-600 transition duration-150 shadow-md">
+                        + Add Exercise to Program
+                    </button>
+                </div>
+
+                <!-- Save Button and Feedback -->
+                <div class="border-t pt-6 mt-6 space-y-4">
+                    <button id="save-program-btn" class="w-full bg-indigo-600 text-white p-4 rounded-lg font-bold text-xl hover:bg-indigo-700 transition duration-150 shadow-lg">
+                        Save Program & Get Shareable ID
+                    </button>
+                    <div id="share-link-output" class="hidden p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+                        <p class="font-semibold mb-2">✅ Program Saved Successfully!</p>
+                        <p>Share this ID with your patient:</p>
+                        <div class="flex items-center mt-2">
+                            <span id="program-share-id" class="flex-grow bg-white p-2 border border-yellow-300 rounded-l-lg font-mono text-base truncate"></span>
+                            <button id="copy-share-id-btn" class="bg-yellow-600 text-white p-2 rounded-r-lg hover:bg-yellow-700 transition duration-150 text-sm">Copy ID</button>
+                        </div>
+                    </div>
+                    <div id="error-message" class="hidden p-3 bg-red-100 border border-red-300 text-red-800 rounded-lg"></div>
+                </div>
+            </div>
+
+            <div id="patient-view" class="space-y-6 hidden">
+                <h2 class="text-2xl font-bold text-gray-800 border-b pb-2">Patient Program Viewer</h2>
+
+                <div id="program-input-area" class="space-y-4">
+                    <p class="text-gray-600">Enter the Program ID provided by your Physical Therapist:</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="patient-program-id" placeholder="Enter Program ID (e.g., 'ABC123XYZ')"
+                               class="flex-grow p-3 border border-gray-300 rounded-l-lg focus:ring-indigo-500 focus:border-indigo-500 text-lg shadow-sm uppercase">
+                        <button id="load-program-btn" class="bg-indigo-600 text-white p-3 rounded-r-lg font-semibold hover:bg-indigo-700 transition duration-150 shadow-md">
+                            Load Program
+                        </button>
+                    </div>
+                </div>
+
+                <div id="loaded-program-display" class="hidden space-y-6">
+                    <div class="p-4 bg-indigo-50 border-l-4 border-indigo-400 rounded-r-lg shadow-md">
+                        <p class="text-sm text-indigo-600">Program for:</p>
+                        <h3 id="display-patient-name" class="text-xl font-bold text-indigo-800"></h3>
+                        <h4 id="display-program-title" class="text-lg text-indigo-600"></h4>
+                    </div>
+
+                    <div id="display-exercises" class="space-y-4">
+                        <!-- Exercises will be rendered here -->
+                    </div>
+                    <button id="reset-view-btn" class="w-full text-center text-sm text-gray-500 mt-6 hover:text-indigo-600 transition duration-150">
+                        ← Back to Creator View
+                    </button>
+                </div>
+                <div id="patient-error" class="hidden p-3 bg-red-100 border border-red-300 text-red-800 rounded-lg"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase variables (provided by the Canvas environment)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        let isAuthReady = false;
+
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const authStatus = document.getElementById('auth-status');
+        const creatorView = document.getElementById('creator-view');
+        const patientView = document.getElementById('patient-view');
+        const exercisesList = document.getElementById('exercises-list');
+        const emptyListMessage = document.getElementById('empty-list-message');
+        const addExerciseBtn = document.getElementById('add-exercise-btn');
+        const saveProgramBtn = document.getElementById('save-program-btn');
+        const shareLinkOutput = document.getElementById('share-link-output');
+        const programShareId = document.getElementById('program-share-id');
+        const copyShareIdBtn = document.getElementById('copy-share-id-btn');
+        const patientProgramIdInput = document.getElementById('patient-program-id');
+        const loadProgramBtn = document.getElementById('load-program-btn');
+        const loadedProgramDisplay = document.getElementById('loaded-program-display');
+        const displayPatientName = document.getElementById('display-patient-name');
+        const displayProgramTitle = document.getElementById('display-program-title');
+        const displayExercises = document.getElementById('display-exercises');
+        const patientError = document.getElementById('patient-error');
+        const errorMessageDiv = document.getElementById('error-message');
+        const resetViewBtn = document.getElementById('reset-view-btn');
+
+        let currentProgramExercises = [];
+
+        // --- Utility Functions ---
+
+        /**
+         * Shows an error message in the Creator View.
+         * @param {string} message The error message to display.
+         */
+        function showCreatorError(message) {
+            errorMessageDiv.textContent = `Error: ${message}`;
+            errorMessageDiv.classList.remove('hidden');
+        }
+
+        /**
+         * Generates a unique, short ID.
+         * @returns {string} A 6-character uppercase ID.
+         */
+        function generateProgramId() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        /**
+         * Renders the list of exercises in the Creator View.
+         */
+        function renderExercisesList() {
+            exercisesList.innerHTML = '';
+            if (currentProgramExercises.length === 0) {
+                emptyListMessage.classList.remove('hidden');
+                exercisesList.appendChild(emptyListMessage);
+                return;
+            }
+            emptyListMessage.classList.add('hidden');
+
+            currentProgramExercises.forEach((ex, index) => {
+                const exerciseElement = document.createElement('div');
+                exerciseElement.className = 'p-3 bg-white rounded-lg border border-indigo-200 shadow-sm flex justify-between items-start space-x-4';
+                exerciseElement.innerHTML = `
+                    <div class="flex-grow">
+                        <p class="text-base font-bold text-indigo-700">${index + 1}. ${ex.name}</p>
+                        <p class="text-sm text-gray-600 mt-1">Sets: <span class="font-medium">${ex.sets}</span> | Reps: <span class="font-medium">${ex.reps}</span></p>
+                        <p class="text-xs text-gray-500 mt-2 whitespace-pre-wrap">${ex.instructions}</p>
+                    </div>
+                    <button data-index="${index}" class="remove-ex-btn text-red-500 hover:text-red-700 p-1 rounded-full transition duration-150 flex-shrink-0" title="Remove Exercise">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                `;
+                exercisesList.appendChild(exerciseElement);
+            });
+
+            // Attach listeners to remove buttons
+            document.querySelectorAll('.remove-ex-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const index = parseInt(e.currentTarget.dataset.index);
+                    currentProgramExercises.splice(index, 1);
+                    renderExercisesList();
+                });
+            });
+        }
+
+        /**
+         * Handles the logic for displaying the appropriate view based on the URL hash.
+         */
+        function handleRouting() {
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const view = params.get('view') || 'creator';
+            const programId = params.get('id');
+
+            creatorView.classList.add('hidden');
+            patientView.classList.add('hidden');
+            loadedProgramDisplay.classList.add('hidden');
+            patientError.classList.add('hidden');
+
+            if (view === 'patient' && programId) {
+                patientProgramIdInput.value = programId.toUpperCase();
+                showPatientView();
+                loadProgramById(programId.toUpperCase());
+            } else if (view === 'patient') {
+                showPatientView();
+            } else {
+                showCreatorView();
+            }
+        }
+
+        function showCreatorView() {
+            creatorView.classList.remove('hidden');
+            patientView.classList.add('hidden');
+            window.history.pushState(null, '', '#view=creator');
+        }
+
+        function showPatientView() {
+            creatorView.classList.add('hidden');
+            patientView.classList.remove('hidden');
+        }
+
+        // --- Core Application Logic ---
+
+        async function initFirebase() {
+            if (!firebaseConfig) {
+                authStatus.textContent = 'Error: Firebase config missing.';
+                loadingIndicator.classList.add('hidden');
+                creatorView.classList.remove('hidden'); // Show creator view even if unauthenticated
+                return;
+            }
+
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Persist authentication state
+                await setPersistence(auth, browserSessionPersistence);
+
+                // Listen for authentication state changes
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        authStatus.textContent = `Signed in as PT User ID: ${userId}`;
+                        isAuthReady = true;
+                    } else {
+                        // Sign in anonymously if no user is found
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                    if (isAuthReady) {
+                         loadingIndicator.classList.add('hidden');
+                         // Handle routing once authentication is complete
+                         handleRouting();
+                    }
+                });
+
+                if (!initialAuthToken) {
+                     // If no initial token, force sign in anonymously immediately
+                    await signInAnonymously(auth);
+                }
+
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                authStatus.textContent = `Error: Authentication Failed. ${e.message}`;
+                loadingIndicator.classList.add('hidden');
+                creatorView.classList.remove('hidden');
+            }
+        }
+
+        /**
+         * Saves the current program data to Firestore.
+         */
+        async function saveProgram() {
+            errorMessageDiv.classList.add('hidden');
+            if (!isAuthReady || !db) {
+                showCreatorError('Application not ready. Please wait for authentication.');
+                return;
+            }
+            if (currentProgramExercises.length === 0) {
+                showCreatorError('Please add at least one exercise to the program.');
+                return;
+            }
+
+            const patientName = document.getElementById('patient-name').value.trim() || 'Unnamed Patient';
+            const programTitle = document.getElementById('program-title').value.trim() || 'Untitled Program';
+
+            if (!patientName || !programTitle) {
+                showCreatorError('Please enter a Patient Name and Program Title.');
+                return;
+            }
+
+            const programId = generateProgramId();
+            const programData = {
+                id: programId,
+                patientName: patientName,
+                title: programTitle,
+                exercises: JSON.stringify(currentProgramExercises), // JSON.stringify complex arrays
+                creatorId: userId,
+                createdAt: new Date().toISOString()
+            };
+
+            const programRef = doc(db, `artifacts/${appId}/public/data/pt_programs`, programId);
+
+            try {
+                saveProgramBtn.disabled = true;
+                saveProgramBtn.textContent = 'Saving...';
+                await setDoc(programRef, programData);
+                saveProgramBtn.disabled = false;
+                saveProgramBtn.textContent = 'Save Program & Get Shareable ID';
+
+                programShareId.textContent = programId;
+                shareLinkOutput.classList.remove('hidden');
+
+                // Clear input fields after successful save
+                currentProgramExercises = [];
+                document.getElementById('patient-name').value = '';
+                document.getElementById('program-title').value = '';
+                renderExercisesList();
+
+                console.log("Program saved with ID:", programId);
+
+            } catch (e) {
+                console.error("Error saving program:", e);
+                showCreatorError(`Failed to save program: ${e.message}`);
+                saveProgramBtn.disabled = false;
+                saveProgramBtn.textContent = 'Save Program & Get Shareable ID';
+            }
+        }
+
+        /**
+         * Loads and displays a program for the patient view.
+         * @param {string} id The program ID to load.
+         */
+        async function loadProgramById(id) {
+            patientError.classList.add('hidden');
+            loadedProgramDisplay.classList.add('hidden');
+            displayExercises.innerHTML = '<p class="text-center text-gray-500">Loading program...</p>';
+
+            if (!isAuthReady || !db) {
+                patientError.textContent = 'Application not ready. Please wait for authentication.';
+                patientError.classList.remove('hidden');
+                return;
+            }
+
+            const programRef = doc(db, `artifacts/${appId}/public/data/pt_programs`, id);
+
+            try {
+                const docSnap = await getDoc(programRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    displayPatientName.textContent = data.patientName;
+                    displayProgramTitle.textContent = data.title;
+                    displayExercises.innerHTML = '';
+
+                    const exercises = JSON.parse(data.exercises);
+
+                    exercises.forEach((ex, index) => {
+                        const exEl = document.createElement('div');
+                        exEl.className = 'p-5 bg-white border border-gray-200 rounded-xl shadow-md space-y-2 transition duration-150 hover:shadow-lg';
+                        exEl.innerHTML = `
+                            <h5 class="text-xl font-bold text-indigo-700">${index + 1}. ${ex.name}</h5>
+                            <div class="flex flex-wrap gap-x-4 text-base text-gray-700">
+                                <span><span class="font-semibold">Sets:</span> ${ex.sets}</span>
+                                <span><span class="font-semibold">Reps/Duration:</span> ${ex.reps}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 pt-2 border-t mt-3 whitespace-pre-wrap">
+                                <span class="font-semibold text-gray-800">Instructions:</span><br>${ex.instructions}
+                            </p>
+                        `;
+                        displayExercises.appendChild(exEl);
+                    });
+
+                    loadedProgramDisplay.classList.remove('hidden');
+
+                } else {
+                    patientError.textContent = `Program ID "${id}" not found. Please check the ID and try again.`;
+                    patientError.classList.remove('hidden');
+                }
+
+            } catch (e) {
+                console.error("Error loading program:", e);
+                patientError.textContent = `An error occurred while fetching the program: ${e.message}`;
+                patientError.classList.remove('hidden');
+            }
+        }
+
+        // --- Event Listeners ---
+
+        // Add Exercise button
+        addExerciseBtn.addEventListener('click', () => {
+            errorMessageDiv.classList.add('hidden');
+            const name = document.getElementById('ex-name').value.trim();
+            const sets = document.getElementById('ex-sets').value.trim();
+            const reps = document.getElementById('ex-reps').value.trim();
+            const instructions = document.getElementById('ex-instructions').value.trim();
+
+            if (!name || !sets || !reps || !instructions) {
+                showCreatorError('Please fill in all fields (Name, Sets, Reps, Instructions) to add an exercise.');
+                return;
+            }
+
+            const newExercise = { name, sets, reps, instructions };
+            currentProgramExercises.push(newExercise);
+
+            // Clear exercise form inputs
+            document.getElementById('ex-name').value = '';
+            document.getElementById('ex-sets').value = '';
+            document.getElementById('ex-reps').value = '';
+            document.getElementById('ex-instructions').value = '';
+            shareLinkOutput.classList.add('hidden'); // Hide share link if user modifies program
+            renderExercisesList();
+        });
+
+        // Save Program button
+        saveProgramBtn.addEventListener('click', saveProgram);
+
+        // Copy Share ID button
+        copyShareIdBtn.addEventListener('click', () => {
+            const id = programShareId.textContent;
+            // Use execCommand for broader compatibility in iFrames
+            const tempInput = document.createElement('textarea');
+            tempInput.value = id;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            copyShareIdBtn.textContent = 'Copied!';
+            setTimeout(() => { copyShareIdBtn.textContent = 'Copy ID'; }, 2000);
+        });
+
+        // Load Program button in Patient View
+        loadProgramBtn.addEventListener('click', () => {
+            const id = patientProgramIdInput.value.trim().toUpperCase();
+            if (id) {
+                // Update URL to reflect the loaded program
+                window.history.pushState(null, '', `#view=patient&id=${id}`);
+                loadProgramById(id);
+            } else {
+                patientError.textContent = 'Please enter a valid Program ID.';
+                patientError.classList.remove('hidden');
+                loadedProgramDisplay.classList.add('hidden');
+            }
+        });
+
+        // Reset View button (to go back to creator view)
+        resetViewBtn.addEventListener('click', showCreatorView);
+
+        // Handle URL hash changes (for direct sharing links)
+        window.addEventListener('hashchange', handleRouting);
+
+
+        // --- Initialization ---
+        loadingIndicator.classList.remove('hidden');
+        initFirebase();
+        renderExercisesList(); // Initialize the empty list
+
+    </script>
+</body>
+</html>
